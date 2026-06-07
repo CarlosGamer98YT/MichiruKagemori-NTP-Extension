@@ -16,6 +16,7 @@ A premium, glassmorphic cyber-neon themed browser extension for **Brave** and **
 - **Custom Search & Clock:** Responsive clock with local date format, plus a search bar supporting custom search engine selection (Google, Brave, DuckDuckGo).
 - **Editable Shortcuts:** Neon-border tiles that translate upward on hover. Easily add, edit, or delete links stored in your local storage.
 - **Privacy & Key Security:** Queries to image boards are only made if user API credentials are configured. Empty credentials trigger a silent abort, keeping your background on a default cyberpunk radial gradient.
+- **Custom JSON API Support:** Allows users to input one or more custom API URLs (one per line, such as Safebooru, Moebooru, Yande.re, or mirrors) directly in the settings drawer. The extension fetches and dynamically parses the JSON payload (handling both direct arrays and nested structures like Gelbooru's), extracting image URLs, scores, artists, and source names.
 - **Full Localization (i18n):** Translates all UI widgets dynamically in English and Spanish based on browser language settings.
 
 ---

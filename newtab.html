@@ -145,6 +145,7 @@
           <span class="checkmark"></span>
           Gelbooru
         </label>
+        <div id="custom-sources-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;"></div>
       </div>
 
       <!-- Credenciales de API -->
@@ -204,6 +205,16 @@
         <h3 data-i18n="customTagsTitle">Etiquetas Personalizadas</h3>
         <input type="text" id="custom-tags-input" placeholder="Ej. kagemori_michiru solo" data-i18n-placeholder="customTagsPlaceholder">
         <p class="settings-help" data-i18n="customTagsHelp">Por defecto busca a Michiru Kagemori. Puedes añadir etiquetas adicionales separadas por espacio.</p>
+      </div>
+
+      <!-- APIs Personalizadas -->
+      <div class="settings-group">
+        <h3 data-i18n="customApisTitle">APIs Personalizadas</h3>
+        <div id="custom-apis-container" class="custom-apis-container">
+          <!-- Se cargan dinámicamente desde JS -->
+        </div>
+        <button type="button" id="add-custom-api-btn" class="secondary-btn" style="margin-top: 4px; padding: 6px 12px; font-size: 0.8rem; width: auto; align-self: flex-start;" data-i18n="addCustomApiBtn">+ Añadir API</button>
+        <p class="settings-help" data-i18n="customApisHelp">Introduce un nombre y la URL completa de la API JSON. El nombre se mostrará en la etiqueta informativa de la imagen.</p>
       </div>
 
       <!-- Limpieza de Caché -->

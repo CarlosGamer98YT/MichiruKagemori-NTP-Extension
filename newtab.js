@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS = {
   opacity: 30,
   imageFit: 'contain',
   customTags: '',
+  customApis: [],
   bgEnabled: true,
   // Credenciales editables
   danbooruUsername: DEFAULT_DANBOORU_LOGIN,
@@ -105,6 +106,9 @@ const elOpacitySlider = document.getElementById('opacity-slider');
 const elOpacityValue = document.getElementById('opacity-value');
 const elFitSelect = document.getElementById('fit-select');
 const elCustomTagsInput = document.getElementById('custom-tags-input');
+const elCustomApisContainer = document.getElementById('custom-apis-container');
+const elCustomSourcesContainer = document.getElementById('custom-sources-container');
+const elAddCustomApiBtn = document.getElementById('add-custom-api-btn');
 const elCacheCount = document.getElementById('cache-count');
 const elClearCacheBtn = document.getElementById('clear-cache-btn');
 
@@ -347,6 +351,17 @@ function isValidImage(url) {
          lower.endsWith('.webp') || lower.endsWith('.gif');
 }
 
+// Utilidad para escapar HTML de forma segura
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Llama a Danbooru y recupera posts
 async function fetchDanbooruBatch(tags, safeSearch) {
   try {
@@ -459,6 +474,70 @@ async function fetchGelbooruBatch(tags, safeSearch) {
   }
 }
 
+// Llama a una API personalizada y procesa la respuesta JSON para extraer imágenes
+async function fetchCustomApi(url, customName = '') {
+  try {
+    console.log('Fetching Custom API:', url, 'with label:', customName);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Custom API respondió con status ${response.status}`);
+    
+    const data = await response.json();
+    let posts = [];
+    
+    if (Array.isArray(data)) {
+      posts = data;
+    } else if (data && typeof data === 'object') {
+      // Buscar cualquier propiedad que sea un array (estilo Gelbooru con "post")
+      for (const key in data) {
+        if (Array.isArray(data[key])) {
+          posts = data[key];
+          break;
+        }
+      }
+    }
+    
+    if (!Array.isArray(posts) || posts.length === 0) return [];
+    
+    // Nombre de origen basado en el label personalizado, o extraído de la URL si está vacío
+    let sourceName = customName ? customName.trim() : '';
+    if (!sourceName) {
+      try {
+        const parsed = new URL(url);
+        sourceName = parsed.hostname.replace('www.', '').split('.')[0];
+      } catch (e) {
+        sourceName = 'Custom';
+      }
+    }
+    
+    return posts
+      .map(post => {
+        // Buscar propiedad de URL de la imagen (formatos válidos)
+        const imgUrl = post.large_file_url || post.file_url || post.sample_url || post.image_url || post.url || post.image;
+        if (!isValidImage(imgUrl)) return null;
+        
+        const score = post.score || 0;
+        const artist = post.tag_string_artist 
+          ? post.tag_string_artist.replace(/_/g, ' ') 
+          : (post.owner || post.artist || sourceName);
+          
+        return {
+          id: post.id || Math.random().toString(36).substring(2, 9),
+          source: sourceName,
+          image_url: imgUrl,
+          original_url: post.file_url || imgUrl,
+          rating: post.rating || 'unknown',
+          score: score,
+          artist: artist,
+          source_link: post.source || url
+        };
+      })
+      .filter(p => p !== null);
+  } catch (err) {
+    console.error('Error cargando API personalizada:', url, err);
+    return [];
+  }
+}
+
 // Rellenar el caché local
 async function refillCache() {
   if (isFetchingImages) return;
@@ -475,7 +554,7 @@ async function refillCache() {
       return;
     }
 
-    const { sources, safeSearch, customTags } = currentSettings;
+    const { sources, safeSearch, customTags, customApis } = currentSettings;
     let newImages = [];
 
     // Procesar búsquedas de etiquetas
@@ -487,6 +566,26 @@ async function refillCache() {
     const promises = [];
     if (sources.danbooru) promises.push(fetchDanbooruBatch(danbooruTags, safeSearch));
     if (sources.gelbooru) promises.push(fetchGelbooruBatch(gelbooruTags, safeSearch));
+
+    // Consultar APIs personalizadas
+    const apisList = customApis || [];
+    if (Array.isArray(apisList) && apisList.length > 0) {
+      apisList.forEach(api => {
+        if (api.url && api.url.trim() !== '') {
+          // Omitir si la API está deshabilitada
+          if (api.enabled === false) {
+            console.log(`Custom API "${api.name}": Deshabilitada. Omitiendo consulta.`);
+            return;
+          }
+          // Omitir si Búsqueda Segura está activa y la API es NSFW
+          if (safeSearch && api.nsfw) {
+            console.log(`Custom API "${api.name}": NSFW con Búsqueda Segura activa. Omitiendo consulta.`);
+            return;
+          }
+          promises.push(fetchCustomApi(api.url, api.name));
+        }
+      });
+    }
 
     const results = await Promise.all(promises);
     results.forEach(res => {
@@ -748,7 +847,127 @@ async function loadNextImage() {
 // 6. CONTROLADORES DEL PANEL DE CONFIGURACIÓN
 // ==========================================================================
 
+// Renderiza dinámicamente una fila para una API personalizada con su nombre, URL, interruptor NSFW y estado habilitado
+function addCustomApiRow(name = '', url = '', nsfw = false, enabled = true, id = '') {
+  if (!id) {
+    id = 'api_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  }
+  
+  const row = document.createElement('div');
+  row.className = 'custom-api-row';
+  row.setAttribute('data-id', id);
+  row.dataset.enabled = enabled ? 'true' : 'false';
+  
+  const sfwText = (typeof chrome !== 'undefined' && chrome.i18n) ? chrome.i18n.getMessage('sfwText') || 'SFW' : 'SFW';
+  const nsfwText = (typeof chrome !== 'undefined' && chrome.i18n) ? chrome.i18n.getMessage('nsfwText') || 'NSFW' : 'NSFW';
+  const labelText = nsfw ? nsfwText : sfwText;
+  const labelClass = nsfw ? 'nsfw' : 'sfw';
+  
+  row.innerHTML = `
+    <input type="text" class="custom-api-name" placeholder="Nombre (ej. Safebooru)" value="${name}">
+    <input type="text" class="custom-api-url" placeholder="URL de la API JSON" value="${url}">
+    <label class="switch mini-switch" title="NSFW / SFW">
+      <input type="checkbox" class="custom-api-nsfw" ${nsfw ? 'checked' : ''}>
+      <span class="slider round"></span>
+    </label>
+    <span class="custom-api-nsfw-label ${labelClass}">${labelText}</span>
+    <button type="button" class="custom-api-delete-btn" title="Eliminar API">✕</button>
+  `;
+  
+  const nsfwToggle = row.querySelector('.custom-api-nsfw');
+  const nsfwLabel = row.querySelector('.custom-api-nsfw-label');
+  
+  nsfwToggle.addEventListener('change', () => {
+    const isNsfw = nsfwToggle.checked;
+    nsfwLabel.textContent = isNsfw ? nsfwText : sfwText;
+    nsfwLabel.className = `custom-api-nsfw-label ${isNsfw ? 'nsfw' : 'sfw'}`;
+    renderSourcesChecklist();
+  });
+  
+  const nameInput = row.querySelector('.custom-api-name');
+  nameInput.addEventListener('input', () => {
+    const checkbox = elCustomSourcesContainer.querySelector(`.custom-source-checkbox[data-id="${id}"]`);
+    if (checkbox) {
+      const labelSpan = checkbox.parentElement.querySelector('.custom-source-label');
+      if (labelSpan) {
+        labelSpan.textContent = nameInput.value.trim() || 'Custom API';
+      }
+    }
+  });
+
+  row.querySelector('.custom-api-delete-btn').addEventListener('click', () => {
+    row.remove();
+    renderSourcesChecklist();
+  });
+  
+  elCustomApisContainer.appendChild(row);
+  renderSourcesChecklist();
+}
+
+// Obtiene la lista actual de APIs personalizadas leyendo desde el DOM
+function getCustomApisFromDOM() {
+  const apis = [];
+  elCustomApisContainer.querySelectorAll('.custom-api-row').forEach(row => {
+    const id = row.getAttribute('data-id');
+    const name = row.querySelector('.custom-api-name').value.trim() || 'Custom API';
+    const url = row.querySelector('.custom-api-url').value.trim();
+    const nsfw = row.querySelector('.custom-api-nsfw').checked;
+    const checkbox = elCustomSourcesContainer.querySelector(`.custom-source-checkbox[data-id="${id}"]`);
+    const enabled = checkbox ? checkbox.checked : (row.dataset.enabled === 'true');
+    apis.push({ id, name, url, nsfw, enabled });
+  });
+  return apis;
+}
+
+// Renderiza dinámicamente el checklist de Fuentes de Imágenes para APIs personalizadas
+function renderSourcesChecklist() {
+  const apis = getCustomApisFromDOM();
+  elCustomSourcesContainer.innerHTML = '';
+  
+  const safeSearch = elSafeSearchToggle.checked;
+  const skippedText = (typeof chrome !== 'undefined' && chrome.i18n) 
+    ? chrome.i18n.getMessage('skippedBySafeSearch') || 'Omitida por Búsqueda Segura' 
+    : 'Omitida por Búsqueda Segura';
+  
+  apis.forEach(api => {
+    const container = document.createElement('label');
+    const isNsfwFiltered = safeSearch && api.nsfw;
+    
+    container.className = `checkbox-container ${isNsfwFiltered ? 'nsfw-disabled' : ''}`;
+    if (isNsfwFiltered) {
+      container.title = skippedText;
+    }
+    
+    container.innerHTML = `
+      <input type="checkbox" class="custom-source-checkbox" data-id="${api.id}" ${api.enabled ? 'checked' : ''} ${isNsfwFiltered ? 'disabled' : ''}>
+      <span class="checkmark"></span>
+      <span class="custom-source-label">${escapeHtml(api.name)}</span>
+      ${api.nsfw ? `<span class="nsfw-warning-badge" title="${isNsfwFiltered ? skippedText : ''}">NSFW</span>` : ''}
+    `;
+    
+    const checkbox = container.querySelector('.custom-source-checkbox');
+    checkbox.addEventListener('change', () => {
+      const row = elCustomApisContainer.querySelector(`.custom-api-row[data-id="${api.id}"]`);
+      if (row) {
+        row.dataset.enabled = checkbox.checked ? 'true' : 'false';
+      }
+    });
+    
+    elCustomSourcesContainer.appendChild(container);
+  });
+}
+
 function setupSettingsPanel() {
+  // Configurar listener para agregar nuevas filas de APIs personalizadas
+  elAddCustomApiBtn.addEventListener('click', () => {
+    addCustomApiRow('', '', false, true);
+  });
+
+  // Escuchar cambios en Búsqueda Segura para actualizar el checklist de fuentes en tiempo real
+  elSafeSearchToggle.addEventListener('change', () => {
+    renderSourcesChecklist();
+  });
+
   // Abrir Ajustes
   elSettingsBtn.addEventListener('click', () => {
     // Cargar valores actuales en los controles del formulario
@@ -762,6 +981,16 @@ function setupSettingsPanel() {
     elFitSelect.value = currentSettings.imageFit || 'contain';
     elCustomTagsInput.value = currentSettings.customTags;
 
+    // Cargar APIs personalizadas dinámicamente
+    elCustomApisContainer.innerHTML = '';
+    elCustomSourcesContainer.innerHTML = '';
+    const apisList = currentSettings.customApis || [];
+    if (Array.isArray(apisList)) {
+      apisList.forEach(api => {
+        addCustomApiRow(api.name, api.url, api.nsfw || false, api.enabled !== false, api.id || '');
+      });
+    }
+
     // Credenciales
     elDanbooruUsername.value = currentSettings.danbooruUsername || '';
     elDanbooruApiKey.value = currentSettings.danbooruApiKey || '';
@@ -770,7 +999,6 @@ function setupSettingsPanel() {
 
     // Abrir drawer
     elSettingsDrawer.classList.remove('hidden');
-    // Forzar reflow para animación
     elSettingsDrawer.offsetHeight;
     elSettingsDrawer.classList.add('active');
   });
@@ -780,7 +1008,7 @@ function setupSettingsPanel() {
     elSettingsDrawer.classList.remove('active');
     setTimeout(() => {
       elSettingsDrawer.classList.add('hidden');
-    }, 400); // Mismo tiempo que transición CSS
+    }, 400);
   };
 
   elCloseSettingsBtn.addEventListener('click', closeDrawer);
@@ -790,11 +1018,31 @@ function setupSettingsPanel() {
     const isDanbooru = elSourceDanbooru.checked;
     const isGelbooru = elSourceGelbooru.checked;
 
-    // Validar que al menos una fuente esté activa
-    if (!isDanbooru && !isGelbooru) {
+    // Leer todas las APIs personalizadas configuradas en la lista
+    const newCustomApis = [];
+    elCustomApisContainer.querySelectorAll('.custom-api-row').forEach(row => {
+      const id = row.getAttribute('data-id');
+      const name = row.querySelector('.custom-api-name').value.trim();
+      const url = row.querySelector('.custom-api-url').value.trim();
+      const nsfw = row.querySelector('.custom-api-nsfw').checked;
+      const enabled = row.dataset.enabled === 'true';
+      if (url) {
+        newCustomApis.push({
+          id: id,
+          name: name || 'Custom API',
+          url: url,
+          nsfw: nsfw,
+          enabled: enabled
+        });
+      }
+    });
+
+    // Validar que al menos una fuente esté activa y habilitada
+    const hasEnabledCustomApi = newCustomApis.some(api => api.enabled);
+    if (!isDanbooru && !isGelbooru && !hasEnabledCustomApi) {
       const errorMsg = (typeof chrome !== 'undefined' && chrome.i18n)
         ? chrome.i18n.getMessage('errorSelectSource')
-        : 'Debes seleccionar al menos una fuente de imágenes (Danbooru o Gelbooru).';
+        : 'Debes seleccionar al menos una fuente de imágenes (Danbooru, Gelbooru o una API Personalizada).';
       alert(errorMsg);
       return;
     }
@@ -808,6 +1056,7 @@ function setupSettingsPanel() {
 
     // Detectar si hubo cambios críticos que invaliden el caché actual
     const tagsChanged = currentSettings.customTags !== newCustomTags;
+    const customApisChanged = JSON.stringify(currentSettings.customApis) !== JSON.stringify(newCustomApis);
     const safeSearchChanged = currentSettings.safeSearch !== newSafeSearch;
     const sourcesChanged = currentSettings.sources.danbooru !== isDanbooru || 
                            currentSettings.sources.gelbooru !== isGelbooru;
@@ -823,12 +1072,13 @@ function setupSettingsPanel() {
         gelbooru: isGelbooru
       },
       safeSearch: newSafeSearch,
-      searchEngine: currentSettings.searchEngine, // Preservar motor de búsqueda
+      searchEngine: currentSettings.searchEngine,
       blur: parseInt(elBlurSlider.value),
       opacity: parseInt(elOpacitySlider.value),
       imageFit: elFitSelect.value,
       customTags: newCustomTags,
-      bgEnabled: currentSettings.bgEnabled, // Preservar estado del fondo
+      customApis: newCustomApis,
+      bgEnabled: currentSettings.bgEnabled,
       danbooruUsername: danUsername,
       danbooruApiKey: danApiKey,
       gelbooruUserId: gelUserId,
@@ -841,8 +1091,8 @@ function setupSettingsPanel() {
     // Aplicar estilos visuales de inmediato
     applyVisualSettings();
 
-    // Si cambiaron las etiquetas, el filtro, las fuentes o las credenciales, vaciamos el caché y hacemos fetch nuevo
-    if (tagsChanged || safeSearchChanged || sourcesChanged || credentialsChanged) {
+    // Si cambiaron las etiquetas, el filtro, las fuentes, las credenciales o las APIs personalizadas, vaciamos el caché y hacemos fetch nuevo
+    if (tagsChanged || customApisChanged || safeSearchChanged || sourcesChanged || credentialsChanged) {
       console.log('Se detectaron cambios que invalidan el caché. Vaciando caché antiguo...');
       await chrome.storage.local.set({ image_cache: [] });
       await refillCache();
@@ -949,6 +1199,39 @@ async function init() {
   
   if (data.settings) {
     currentSettings = { ...DEFAULT_SETTINGS, ...data.settings };
+    // Migración: si customApis es un string, lo convertimos a un array de objetos
+    if (typeof currentSettings.customApis === 'string') {
+      if (currentSettings.customApis.trim() !== '') {
+        currentSettings.customApis = currentSettings.customApis
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line !== '')
+          .map((url, idx) => ({ 
+            id: 'api_' + (Date.now() + idx) + '_' + Math.random().toString(36).substring(2, 9),
+            name: '', 
+            url, 
+            nsfw: false, 
+            enabled: true 
+          }));
+      } else {
+        currentSettings.customApis = [];
+      }
+    } else if (Array.isArray(currentSettings.customApis)) {
+      // Si ya es un array, nos aseguramos de que todos tengan id, nsfw y enabled
+      currentSettings.customApis = currentSettings.customApis.map((api, idx) => {
+        const updatedApi = { ...api };
+        if (!updatedApi.id) {
+          updatedApi.id = 'api_' + (Date.now() + idx) + '_' + Math.random().toString(36).substring(2, 9);
+        }
+        if (updatedApi.nsfw === undefined) {
+          updatedApi.nsfw = false;
+        }
+        if (updatedApi.enabled === undefined) {
+          updatedApi.enabled = true;
+        }
+        return updatedApi;
+      });
+    }
   } else {
     currentSettings = { ...DEFAULT_SETTINGS };
     await chrome.storage.local.set({ settings: currentSettings });

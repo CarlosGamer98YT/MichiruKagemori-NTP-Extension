@@ -95,6 +95,18 @@
   "customTagsHelp": {
     "message": "Searches for Michiru Kagemori by default. You can add extra space-separated tags."
   },
+  "customApisTitle": {
+    "message": "Custom APIs"
+  },
+  "customApisPlaceholder": {
+    "message": "Enter one full API URL per line (e.g., https://yande.re/post.json?tags=michiru_kagemori&limit=20)"
+  },
+  "customApisHelp": {
+    "message": "Enter a custom name/label and the complete JSON API endpoint for each source. The name will be displayed on the image metadata badge."
+  },
+  "addCustomApiBtn": {
+    "message": "+ Add API"
+  },
   "cacheManagementTitle": {
     "message": "Cache Management"
   },
@@ -141,9 +153,18 @@
     "message": "Unknown"
   },
   "errorSelectSource": {
-    "message": "You must select at least one image source (Danbooru or Gelbooru)."
+    "message": "You must select at least one image source (Danbooru, Gelbooru, or a Custom API)."
   },
   "confirmClearCache": {
     "message": "Are you sure you want to clear the image cache? New images will be fetched."
+  },
+  "sfwText": {
+    "message": "SFW"
+  },
+  "nsfwText": {
+    "message": "NSFW"
+  },
+  "skippedBySafeSearch": {
+    "message": "Skipped by Safe Search"
   }
 }
