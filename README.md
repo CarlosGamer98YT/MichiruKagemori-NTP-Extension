@@ -40,7 +40,7 @@ Since this is a developer extension, you must load it as an unpacked directory i
 
 ### 2. Load the Extension
 1. Click the **"Load unpacked"** button in the top-left corner.
-2. Select the extension directory: `/home/carlos/Documents/antigravity/Michiru-NTB-Extension`.
+2. Select the extension directory: `/home/{user}/Documents/Michiru-NTB-Extension`.
 3. The extension card **"Michiru Kagemori New Tab"** will appear on the dashboard.
 
 ### 3. Open a New Tab
