@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
     gelbooru: true
   },
   safeSearch: true,
+  streamerMode: false,
   searchEngine: 'google',
   blur: 0,
   opacity: 30,
@@ -95,11 +96,14 @@ const elSettingsDrawer = document.getElementById('settings-drawer');
 const elCloseSettingsBtn = document.getElementById('close-settings-btn');
 const elSaveSettingsBtn = document.getElementById('save-settings-btn');
 const elToggleBgBtn = document.getElementById('toggle-bg-btn');
+const elToggleUiBtn = document.getElementById('toggle-ui-btn');
+const elToggleUiIcon = document.getElementById('toggle-ui-icon');
 
 // Ajustes del Drawer
 const elSourceDanbooru = document.getElementById('source-danbooru');
 const elSourceGelbooru = document.getElementById('source-gelbooru');
 const elSafeSearchToggle = document.getElementById('safe-search-toggle');
+const elStreamerModeToggle = document.getElementById('streamer-mode-toggle');
 const elBlurSlider = document.getElementById('blur-slider');
 const elBlurValue = document.getElementById('blur-value');
 const elOpacitySlider = document.getElementById('opacity-slider');
@@ -362,6 +366,78 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Obtiene el enlace de búsqueda del artista según la API y motor utilizado
+function getArtistUrl(apiUrl, artistName) {
+  if (!apiUrl || !artistName || artistName === 'Desconocido' || artistName === 'Unknown') {
+    return '#';
+  }
+  try {
+    const parsedUrl = new URL(apiUrl);
+    const origin = parsedUrl.origin;
+    const path = parsedUrl.pathname;
+    const search = parsedUrl.search;
+    
+    const formattedArtist = artistName.replace(/ /g, '_');
+    
+    // Si es tipo Gelbooru (usa index.php?page=dapi)
+    if (search.includes('page=dapi') || search.includes('gelbooru') || path.includes('index.php')) {
+      return `${origin}/index.php?page=post&s=list&tags=${encodeURIComponent(formattedArtist)}`;
+    }
+    
+    // Si es tipo Danbooru (usa posts.json)
+    if (path.includes('/posts.json') || path.includes('/posts')) {
+      return `${origin}/posts?tags=${encodeURIComponent(formattedArtist)}`;
+    }
+    
+    // Si es tipo Moebooru (usa post.json)
+    if (path.includes('/post.json') || path.includes('/post')) {
+      return `${origin}/post?tags=${encodeURIComponent(formattedArtist)}`;
+    }
+    
+    // Formato genérico para otros Boorus
+    return `${origin}/post?tags=${encodeURIComponent(formattedArtist)}`;
+  } catch (e) {
+    console.error('Error al generar la URL del artista:', e);
+    return '#';
+  }
+}
+
+// Genera el enlace de búsqueda del artista intentando extraerlo de los datos de la imagen
+function getArtistUrlFromImage(img) {
+  if (!img || !img.artist || img.artist === 'Desconocido' || img.artist === 'Unknown') {
+    return '#';
+  }
+  const artistName = img.artist;
+  let domainUrl = '';
+  try {
+    if (img.original_url && img.original_url.startsWith('http')) {
+      domainUrl = img.original_url;
+    } else if (img.source_link && img.source_link.startsWith('http')) {
+      domainUrl = img.source_link;
+    }
+  } catch (e) {}
+
+  if (domainUrl) {
+    try {
+      const parsed = new URL(domainUrl);
+      const origin = parsed.origin;
+      const hostname = parsed.hostname;
+      const formattedArtist = artistName.replace(/ /g, '_');
+      
+      if (hostname.includes('yande.re') || hostname.includes('konachan')) {
+        return `${origin}/post?tags=${encodeURIComponent(formattedArtist)}`;
+      }
+      if (hostname.includes('danbooru')) {
+        return `${origin}/posts?tags=${encodeURIComponent(formattedArtist)}`;
+      }
+      return `${origin}/index.php?page=post&s=list&tags=${encodeURIComponent(formattedArtist)}`;
+    } catch (e) {}
+  }
+  
+  // Fallback a Gelbooru
+  return `https://gelbooru.com/index.php?page=post&s=list&tags=${encodeURIComponent(artistName.replace(/ /g, '_'))}`;
+}
+
 // Llama a Danbooru y recupera posts
 async function fetchDanbooruBatch(tags, safeSearch) {
   try {
@@ -404,16 +480,20 @@ async function fetchDanbooruBatch(tags, safeSearch) {
     // Normalizar
     return data
       .filter(post => isValidImage(post.large_file_url || post.file_url))
-      .map(post => ({
-        id: post.id,
-        source: 'danbooru',
-        image_url: post.large_file_url || post.file_url,
-        original_url: post.file_url,
-        rating: post.rating, // 'g', 's', 'q', 'e'
-        score: post.score || 0,
-        artist: post.tag_string_artist ? post.tag_string_artist.replace(/_/g, ' ') : 'Desconocido',
-        source_link: post.source || `https://danbooru.donmai.us/posts/${post.id}`
-      }));
+      .map(post => {
+        const artist = post.tag_string_artist ? post.tag_string_artist.replace(/_/g, ' ') : 'Desconocido';
+        return {
+          id: post.id,
+          source: 'danbooru',
+          image_url: post.large_file_url || post.file_url,
+          original_url: post.file_url,
+          rating: post.rating, // 'g', 's', 'q', 'e'
+          score: post.score || 0,
+          artist: artist,
+          artist_url: getArtistUrl(url, artist),
+          source_link: post.source || `https://danbooru.donmai.us/posts/${post.id}`
+        };
+      });
   } catch (err) {
     console.error('Error cargando Danbooru:', err);
     return [];
@@ -458,16 +538,20 @@ async function fetchGelbooruBatch(tags, safeSearch) {
     // Normalizar
     return data.post
       .filter(post => isValidImage(post.sample_url || post.file_url))
-      .map(post => ({
-        id: post.id,
-        source: 'gelbooru',
-        image_url: post.sample_url || post.file_url,
-        original_url: post.file_url,
-        rating: post.rating, // 'safe', 'questionable', 'explicit'
-        score: post.score || 0,
-        artist: post.owner || 'Desconocido', // En gelbooru a veces no viene artista separado, usamos owner
-        source_link: post.source || `https://gelbooru.com/index.php?page=post&s=view&id=${post.id}`
-      }));
+      .map(post => {
+        const artist = post.owner || 'Desconocido';
+        return {
+          id: post.id,
+          source: 'gelbooru',
+          image_url: post.sample_url || post.file_url,
+          original_url: post.file_url,
+          rating: post.rating, // 'safe', 'questionable', 'explicit'
+          score: post.score || 0,
+          artist: artist,
+          artist_url: getArtistUrl(url, artist),
+          source_link: post.source || `https://gelbooru.com/index.php?page=post&s=view&id=${post.id}`
+        };
+      });
   } catch (err) {
     console.error('Error cargando Gelbooru:', err);
     return [];
@@ -528,6 +612,7 @@ async function fetchCustomApi(url, customName = '') {
           rating: post.rating || 'unknown',
           score: score,
           artist: artist,
+          artist_url: getArtistUrl(url, artist),
           source_link: post.source || url
         };
       })
@@ -554,7 +639,8 @@ async function refillCache() {
       return;
     }
 
-    const { sources, safeSearch, customTags, customApis } = currentSettings;
+    const { sources, customTags, customApis } = currentSettings;
+    const safeSearch = currentSettings.safeSearch || currentSettings.streamerMode;
     let newImages = [];
 
     // Procesar búsquedas de etiquetas
@@ -766,10 +852,14 @@ function updateImageMetadataUI(img) {
     ? ((typeof chrome !== 'undefined' && chrome.i18n) ? chrome.i18n.getMessage('unknownArtist') : 'Desconocido')
     : img.artist;
   elImageArtistLink.textContent = artistName;
-  if (img.source === 'danbooru') {
+  if (img.artist_url) {
+    elImageArtistLink.href = img.artist_url;
+  } else if (img.source === 'danbooru') {
     elImageArtistLink.href = `https://danbooru.donmai.us/posts?tags=${encodeURIComponent(img.artist.replace(/ /g, '_'))}`;
-  } else {
+  } else if (img.source === 'gelbooru') {
     elImageArtistLink.href = `https://gelbooru.com/index.php?page=post&s=list&tags=${encodeURIComponent(img.artist.replace(/ /g, '_'))}`;
+  } else {
+    elImageArtistLink.href = getArtistUrlFromImage(img);
   }
 
   // Enlace original
@@ -863,15 +953,19 @@ function addCustomApiRow(name = '', url = '', nsfw = false, enabled = true, id =
   const labelText = nsfw ? nsfwText : sfwText;
   const labelClass = nsfw ? 'nsfw' : 'sfw';
   
+  const streamerModeActive = elStreamerModeToggle && elStreamerModeToggle.checked;
+  const displayStyle = streamerModeActive ? 'display: none;' : '';
+  const disabledAttr = streamerModeActive ? 'disabled' : '';
+
   row.innerHTML = `
-    <input type="text" class="custom-api-name" placeholder="Nombre (ej. Safebooru)" value="${name}">
-    <input type="text" class="custom-api-url" placeholder="URL de la API JSON" value="${url}">
-    <label class="switch mini-switch" title="NSFW / SFW">
-      <input type="checkbox" class="custom-api-nsfw" ${nsfw ? 'checked' : ''}>
+    <input type="text" class="custom-api-name" placeholder="Nombre (ej. Safebooru)" value="${name}" ${disabledAttr}>
+    <input type="text" class="custom-api-url" placeholder="URL de la API JSON" value="${url}" ${disabledAttr}>
+    <label class="switch mini-switch" title="NSFW / SFW" style="${displayStyle}">
+      <input type="checkbox" class="custom-api-nsfw" ${nsfw ? 'checked' : ''} ${disabledAttr}>
       <span class="slider round"></span>
     </label>
-    <span class="custom-api-nsfw-label ${labelClass}">${labelText}</span>
-    <button type="button" class="custom-api-delete-btn" title="Eliminar API">✕</button>
+    <span class="custom-api-nsfw-label ${labelClass}" style="${displayStyle}">${labelText}</span>
+    <button type="button" class="custom-api-delete-btn" title="Eliminar API" ${disabledAttr}>✕</button>
   `;
   
   const nsfwToggle = row.querySelector('.custom-api-nsfw');
@@ -925,11 +1019,16 @@ function renderSourcesChecklist() {
   elCustomSourcesContainer.innerHTML = '';
   
   const safeSearch = elSafeSearchToggle.checked;
+  const streamerMode = elStreamerModeToggle && elStreamerModeToggle.checked;
   const skippedText = (typeof chrome !== 'undefined' && chrome.i18n) 
     ? chrome.i18n.getMessage('skippedBySafeSearch') || 'Omitida por Búsqueda Segura' 
     : 'Omitida por Búsqueda Segura';
   
   apis.forEach(api => {
+    // Si el modo streamer está activo y la API es NSFW, no se muestra en el checklist de fuentes
+    if (streamerMode && api.nsfw) {
+      return;
+    }
     const container = document.createElement('label');
     const isNsfwFiltered = safeSearch && api.nsfw;
     
@@ -957,6 +1056,70 @@ function renderSourcesChecklist() {
   });
 }
 
+// Aplica el estado de la UI según el Modo Streamer
+function applyStreamerModeUIState() {
+  const isStreamer = elStreamerModeToggle.checked;
+  
+  if (isStreamer) {
+    // Forzar Búsqueda Segura activa y deshabilitarla
+    elSafeSearchToggle.checked = true;
+    elSafeSearchToggle.disabled = true;
+    
+    // Ocultar las filas de APIs que sean NSFW. En las SFW, ocultar el switch NSFW y deshabilitar edición
+    elCustomApisContainer.querySelectorAll('.custom-api-row').forEach(row => {
+      const nsfwToggle = row.querySelector('.custom-api-nsfw');
+      const isNsfw = nsfwToggle && nsfwToggle.checked;
+      
+      if (isNsfw) {
+        row.style.display = 'none'; // Ocultar por completo la API si es NSFW
+      } else {
+        row.style.display = '';
+        const switchEl = row.querySelector('.switch.mini-switch');
+        if (switchEl) switchEl.style.display = 'none';
+        const labelEl = row.querySelector('.custom-api-nsfw-label');
+        if (labelEl) labelEl.style.display = 'none';
+        
+        const nameInput = row.querySelector('.custom-api-name');
+        if (nameInput) nameInput.disabled = true;
+        const urlInput = row.querySelector('.custom-api-url');
+        if (urlInput) urlInput.disabled = true;
+        const deleteBtn = row.querySelector('.custom-api-delete-btn');
+        if (deleteBtn) deleteBtn.disabled = true;
+      }
+    });
+    
+    // Deshabilitar la adición de nuevas APIs
+    elAddCustomApiBtn.disabled = true;
+    elAddCustomApiBtn.style.opacity = '0.5';
+    elAddCustomApiBtn.style.cursor = 'not-allowed';
+  } else {
+    // Restaurar estado normal
+    elSafeSearchToggle.disabled = false;
+    
+    elCustomApisContainer.querySelectorAll('.custom-api-row').forEach(row => {
+      row.style.display = ''; // Mostrar todas las filas
+      const switchEl = row.querySelector('.switch.mini-switch');
+      if (switchEl) switchEl.style.display = '';
+      const labelEl = row.querySelector('.custom-api-nsfw-label');
+      if (labelEl) labelEl.style.display = '';
+      
+      const nameInput = row.querySelector('.custom-api-name');
+      if (nameInput) nameInput.disabled = false;
+      const urlInput = row.querySelector('.custom-api-url');
+      if (urlInput) urlInput.disabled = false;
+      const deleteBtn = row.querySelector('.custom-api-delete-btn');
+      if (deleteBtn) deleteBtn.disabled = false;
+    });
+    
+    elAddCustomApiBtn.disabled = false;
+    elAddCustomApiBtn.style.opacity = '';
+    elAddCustomApiBtn.style.cursor = '';
+  }
+  
+  // Actualizar checklist de fuentes para ocultar/mostrar las NSFW
+  renderSourcesChecklist();
+}
+
 function setupSettingsPanel() {
   // Configurar listener para agregar nuevas filas de APIs personalizadas
   elAddCustomApiBtn.addEventListener('click', () => {
@@ -968,12 +1131,18 @@ function setupSettingsPanel() {
     renderSourcesChecklist();
   });
 
+  // Escuchar cambios en Modo Streamer para actualizar la UI en tiempo real
+  elStreamerModeToggle.addEventListener('change', () => {
+    applyStreamerModeUIState();
+  });
+
   // Abrir Ajustes
   elSettingsBtn.addEventListener('click', () => {
     // Cargar valores actuales en los controles del formulario
     elSourceDanbooru.checked = currentSettings.sources.danbooru;
     elSourceGelbooru.checked = currentSettings.sources.gelbooru;
     elSafeSearchToggle.checked = currentSettings.safeSearch;
+    elStreamerModeToggle.checked = currentSettings.streamerMode || false;
     elBlurSlider.value = currentSettings.blur;
     elBlurValue.textContent = `${currentSettings.blur}px`;
     elOpacitySlider.value = currentSettings.opacity;
@@ -990,6 +1159,9 @@ function setupSettingsPanel() {
         addCustomApiRow(api.name, api.url, api.nsfw || false, api.enabled !== false, api.id || '');
       });
     }
+
+    // Aplicar el estado del Modo Streamer en la UI
+    applyStreamerModeUIState();
 
     // Credenciales
     elDanbooruUsername.value = currentSettings.danbooruUsername || '';
@@ -1049,6 +1221,7 @@ function setupSettingsPanel() {
 
     const newCustomTags = elCustomTagsInput.value.trim();
     const newSafeSearch = elSafeSearchToggle.checked;
+    const newStreamerMode = elStreamerModeToggle.checked;
     const danUsername = elDanbooruUsername.value.trim();
     const danApiKey = elDanbooruApiKey.value.trim();
     const gelUserId = elGelbooruUserId.value.trim();
@@ -1058,6 +1231,7 @@ function setupSettingsPanel() {
     const tagsChanged = currentSettings.customTags !== newCustomTags;
     const customApisChanged = JSON.stringify(currentSettings.customApis) !== JSON.stringify(newCustomApis);
     const safeSearchChanged = currentSettings.safeSearch !== newSafeSearch;
+    const streamerModeChanged = currentSettings.streamerMode !== newStreamerMode;
     const sourcesChanged = currentSettings.sources.danbooru !== isDanbooru || 
                            currentSettings.sources.gelbooru !== isGelbooru;
     const credentialsChanged = currentSettings.danbooruUsername !== danUsername ||
@@ -1072,6 +1246,7 @@ function setupSettingsPanel() {
         gelbooru: isGelbooru
       },
       safeSearch: newSafeSearch,
+      streamerMode: newStreamerMode,
       searchEngine: currentSettings.searchEngine,
       blur: parseInt(elBlurSlider.value),
       opacity: parseInt(elOpacitySlider.value),
@@ -1091,8 +1266,8 @@ function setupSettingsPanel() {
     // Aplicar estilos visuales de inmediato
     applyVisualSettings();
 
-    // Si cambiaron las etiquetas, el filtro, las fuentes, las credenciales o las APIs personalizadas, vaciamos el caché y hacemos fetch nuevo
-    if (tagsChanged || customApisChanged || safeSearchChanged || sourcesChanged || credentialsChanged) {
+    // Si cambiaron las etiquetas, el filtro, el modo streamer, las fuentes, las credenciales o las APIs personalizadas, vaciamos el caché y hacemos fetch nuevo
+    if (tagsChanged || customApisChanged || safeSearchChanged || streamerModeChanged || sourcesChanged || credentialsChanged) {
       console.log('Se detectaron cambios que invalidan el caché. Vaciando caché antiguo...');
       await chrome.storage.local.set({ image_cache: [] });
       await refillCache();
@@ -1255,6 +1430,32 @@ async function init() {
     // Si se acaba de activar, cargar la primera imagen de inmediato
     if (currentSettings.bgEnabled) {
       loadNextImage();
+    }
+  });
+
+  // Botón toggle de visibilidad de UI (Modo Zen)
+  elToggleUiBtn.addEventListener('click', () => {
+    const isHidden = document.body.classList.toggle('ui-hidden');
+    
+    // Cambiar el icono SVG y el título del botón según el estado
+    if (isHidden) {
+      elToggleUiIcon.innerHTML = `
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      `;
+      const hiddenTooltip = (typeof chrome !== 'undefined' && chrome.i18n)
+        ? (chrome.i18n.getUILanguage().startsWith('es') ? 'Mostrar interfaz' : 'Show interface')
+        : 'Mostrar interfaz';
+      elToggleUiBtn.title = hiddenTooltip;
+    } else {
+      elToggleUiIcon.innerHTML = `
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      `;
+      const shownTooltip = (typeof chrome !== 'undefined' && chrome.i18n)
+        ? chrome.i18n.getMessage('toggleUiTooltip') || 'Ocultar interfaz (Modo Zen)'
+        : 'Ocultar interfaz (Modo Zen)';
+      elToggleUiBtn.title = shownTooltip;
     }
   });
 

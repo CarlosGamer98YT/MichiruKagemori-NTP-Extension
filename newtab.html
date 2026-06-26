@@ -113,6 +113,12 @@
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
         </button>
+        <button id="toggle-ui-btn" class="control-btn glass-panel" title="Ocultar interfaz (Modo Zen)" data-i18n-title="toggleUiTooltip">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" id="toggle-ui-icon">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
         <button id="settings-btn" class="control-btn glass-panel" title="Configuración" data-i18n-title="settingsTooltip">
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -167,7 +173,7 @@
         </div>
       </div>
 
-      <!-- Safe Search -->
+      <!-- Safe Search & Streamer Mode -->
       <div class="settings-group">
         <h3 data-i18n="contentFilterTitle">Filtro de Contenido</h3>
         <div class="toggle-container">
@@ -178,6 +184,15 @@
           <span class="toggle-label" data-i18n="safeSearchLabel">Búsqueda Segura (Safe Search)</span>
         </div>
         <p class="settings-help" data-i18n="safeSearchHelp">Filtra contenido cuestionable o explícito. Desactivarlo puede mostrar imágenes para adultos.</p>
+        
+        <div class="toggle-container" style="margin-top: 12px;">
+          <label class="switch">
+            <input type="checkbox" id="streamer-mode-toggle">
+            <span class="slider round"></span>
+          </label>
+          <span class="toggle-label" data-i18n="streamerModeLabel">Modo Streamer (Streamer Mode)</span>
+        </div>
+        <p class="settings-help" data-i18n="streamerModeHelp">Oculta fuentes NSFW, bloquea la edición de APIs y fuerza la búsqueda segura.</p>
       </div>
 
       <!-- Ajustes de UI -->
@@ -227,8 +242,9 @@
       </div>
     </div>
 
-    <div class="drawer-footer">
+    <div class="drawer-footer" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
       <button id="save-settings-btn" class="primary-btn" data-i18n="saveSettingsBtn">Guardar y Aplicar</button>
+      <span style="font-size: 0.7rem; color: var(--clr-text-muted);" data-i18n="createdBy">Hecho por CarlosGamer98YT</span>
     </div>
   </aside>
 

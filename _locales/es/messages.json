@@ -166,5 +166,17 @@
   },
   "skippedBySafeSearch": {
     "message": "Omitida por Búsqueda Segura"
+  },
+  "streamerModeLabel": {
+    "message": "Modo Streamer (Streamer Mode)"
+  },
+  "streamerModeHelp": {
+    "message": "Oculta fuentes NSFW, bloquea la edición de APIs y fuerza la búsqueda segura."
+  },
+  "toggleUiTooltip": {
+    "message": "Ocultar/Mostrar interfaz (Modo Zen)"
+  },
+  "createdBy": {
+    "message": "Hecho por CarlosGamer98YT"
   }
 }
