@@ -69,4 +69,4 @@ Since this is a developer extension, you must load it as an unpacked directory i
 
 ## Acknowledgements
 
-Thanks to @Hanbrooks for helping me with the styles and coming to my home to do this project.
+Thanks to [@Hanbrooks](https://github.com/Hansbrooks) for helping me with the styles and coming to my home to do this project.
