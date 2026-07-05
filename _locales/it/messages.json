@@ -1,0 +1,182 @@
+{
+  "extName": {
+    "message": "Michiru Kagemori Nuova Scheda"
+  },
+  "extDesc": {
+    "message": "Sostituisce lo sfondo della Nuova Scheda con bellissime immagini casuali di Michiru Kagemori da Danbooru e Gelbooru."
+  },
+  "tabTitle": {
+    "message": "Nuova scheda"
+  },
+  "searchPlaceholder": {
+    "message": "Cerca sul web..."
+  },
+  "searchTooltip": {
+    "message": "Cambia motore di ricerca"
+  },
+  "artistLabel": {
+    "message": "Artista:"
+  },
+  "artistLoading": {
+    "message": "Caricamento..."
+  },
+  "viewOriginalTooltip": {
+    "message": "Visualizza l'immagine originale"
+  },
+  "viewOriginalText": {
+    "message": "Originale"
+  },
+  "toggleBgTooltip": {
+    "message": "Attiva/Disattiva sfondo"
+  },
+  "refreshTooltip": {
+    "message": "Immagine successiva (Aggiorna)"
+  },
+  "settingsTooltip": {
+    "message": "Impostazioni"
+  },
+  "settingsTitle": {
+    "message": "Impostazioni"
+  },
+  "closeTooltip": {
+    "message": "Chiudi"
+  },
+  "imageSourcesTitle": {
+    "message": "Fonti di immagini"
+  },
+  "apiCredentialsTitle": {
+    "message": "Credenziali API"
+  },
+  "danbooruUsernamePlaceholder": {
+    "message": "Nome utente (Login)"
+  },
+  "danbooruApiKeyPlaceholder": {
+    "message": "Chiave API / Token"
+  },
+  "gelbooruUserIdPlaceholder": {
+    "message": "ID utente"
+  },
+  "gelbooruApiKeyPlaceholder": {
+    "message": "Chiave API / Token"
+  },
+  "contentFilterTitle": {
+    "message": "Filtro dei contenuti"
+  },
+  "safeSearchLabel": {
+    "message": "Ricerca Sicura (Safe Search)"
+  },
+  "safeSearchHelp": {
+    "message": "Filtra i contenuti discutibili o espliciti. Disattivandolo si potrebbero visualizzare immagini per adulti."
+  },
+  "visualCustomizationTitle": {
+    "message": "Personalizzazione visiva"
+  },
+  "blurLabel": {
+    "message": "Sfocatura dello sfondo:"
+  },
+  "opacityLabel": {
+    "message": "Opacità del filtro:"
+  },
+  "imageFitLabel": {
+    "message": "Adattamento immagine:"
+  },
+  "fitOptionContain": {
+    "message": "Adatta (Senza ritaglio)"
+  },
+  "fitOptionCover": {
+    "message": "Riempi (Ritaglia bordi)"
+  },
+  "customTagsTitle": {
+    "message": "Tag personalizzati"
+  },
+  "customTagsPlaceholder": {
+    "message": "es. kagemori_michiru solo"
+  },
+  "customTagsHelp": {
+    "message": "Cerca Michiru Kagemori per impostazione predefinita. Puoi aggiungere tag extra separati da spazi."
+  },
+  "customApisTitle": {
+    "message": "API personalizzate"
+  },
+  "customApisPlaceholder": {
+    "message": "Inserisci un URL API completo per riga (es. https://yande.re/post.json?tags=michiru_kagemori&limit=20)"
+  },
+  "customApisHelp": {
+    "message": "Inserisci un nome personalizzato e l'endpoint dell'API JSON per ogni fonte. Il nome sarà mostrato nell'etichetta informativa dell'immagine."
+  },
+  "addCustomApiBtn": {
+    "message": "+ Aggiungi API"
+  },
+  "cacheManagementTitle": {
+    "message": "Gestione cache"
+  },
+  "cacheCountLabel": {
+    "message": "Immagini memorizzate nella cache:"
+  },
+  "clearCacheBtn": {
+    "message": "Svuota cache"
+  },
+  "saveSettingsBtn": {
+    "message": "Salva e applica"
+  },
+  "addShortcutTitle": {
+    "message": "Aggiungi collegamento"
+  },
+  "editShortcutTitle": {
+    "message": "Modifica collegamento"
+  },
+  "shortcutNameLabel": {
+    "message": "Nome"
+  },
+  "shortcutNamePlaceholder": {
+    "message": "es. GitHub"
+  },
+  "shortcutUrlLabel": {
+    "message": "Indirizzo URL"
+  },
+  "shortcutUrlPlaceholder": {
+    "message": "es. https://github.com"
+  },
+  "deleteBtn": {
+    "message": "Elimina"
+  },
+  "cancelBtn": {
+    "message": "Annulla"
+  },
+  "saveBtn": {
+    "message": "Salva"
+  },
+  "sourceOffline": {
+    "message": "Scollegato"
+  },
+  "unknownArtist": {
+    "message": "Sconosciuto"
+  },
+  "errorSelectSource": {
+    "message": "Devi selezionare almeno una fonte di immagini (Danbooru, Gelbooru o un'API personalizzata)."
+  },
+  "confirmClearCache": {
+    "message": "Sei sicuro di voler svuotare la cache delle immagini? Verranno scaricate nuove immagini."
+  },
+  "sfwText": {
+    "message": "SFW"
+  },
+  "nsfwText": {
+    "message": "NSFW"
+  },
+  "skippedBySafeSearch": {
+    "message": "Ignorato da Ricerca Sicura"
+  },
+  "streamerModeLabel": {
+    "message": "Modalità Streamer (Streamer Mode)"
+  },
+  "streamerModeHelp": {
+    "message": "Nasconde le fonti NSFW, blocca modifiche e aggiunte di API e impone la Ricerca Sicura."
+  },
+  "toggleUiTooltip": {
+    "message": "Mostra/Nascondi interfaccia (Modalità Zen)"
+  },
+  "createdBy": {
+    "message": "Fatto da CarlosGamer98YT"
+  }
+}
